@@ -1,10 +1,68 @@
 <!DOCTYPE html>
 <html>
+
+<head>
+    <title>Windows 95 3D Maze Screensaver</title>
+    <style>
+        html,
+        body,
+        div,
+        sectoin,
+        img {
+            margin: 0;
+            padding: 0;
+            border: 0;
+        }
+
+        body {
+            background-color: #C0C0C0;
+        }
+
+        a,
+        a:hover,
+        a:visited,
+        a:active {
+            text-decoration: none;
+            color: #000000;
+        }
+
+        .center-flex {
+            display: flex;
+            flex-flow: column wrap;
+            justify-content: center;
+            align-items: center;
+            align-content: center;
+            height: 100vh;
+        }
+
+        button {
+            background: #C0C0C0;
+            border-width: 4px;
+            border-color: #FFFFFF #808080 #808080 #FFFFFF;
+            padding: 0.1em;
+            font-weight: bold;
+            font-family: Tahoma;
+            text-align: center;
+            height: 1.5em;
+            font-size: 3em;
+        }
+    </style>
+</head>
+
 <body>
-<script type="text/javascript">
-<!--
-window.location = "./maze.html"
-//-->
-</script>
+    <script type="text/javascript">
+        document.addEventListener("click", function (e) {
+            if (!e.target.matches("#start")) return;
+            e.preventDefault();
+            window.location.href = "maze.html";
+        }, false);
+    </script>
+    <section class="center-flex">
+        <div class="flex-baby">
+            <a href="maze.html"><button id="start" title="Click here to begin"><img src="win.svg?95"
+                        style="width:1em;height:1em;padding-right:0.1em;position:relative;top:0.1em;">Start</button></a>
+        </div>
+    </section>
 </body>
+
 </html>
