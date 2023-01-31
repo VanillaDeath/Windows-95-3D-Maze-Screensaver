@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html>
-
+<head>
 <style>
 html, body {
   width:  100%;
@@ -81,11 +81,13 @@ void main()
 <script type="text/javascript" src="initShaders.js"></script>
 <script type="text/javascript" src="MV.js"></script>
 <script type="text/javascript" src="maze.js"></script>
-
+<title>C:\Windows\System32\ssmaze.scr</title>
+</head>
 <body>
 <canvas id="gl-canvas" width="683" height="512">
 Oops ... your browser doesn't support the HTML5 canvas element
 </canvas>
-<img id = "texImage" src = "http://ee.cooper.edu/~goldfarb/maze/wall.bmp" crossOrigin="use-credentials" hidden></img>
+<img id = "texImage" src = "wall.bmp" crossOrigin="use-credentials" hidden></img>
+<div id="debug" style="display:none;position:fixed;top:10px;left:10px;background:#FFFFFF;"></div>
 </body>
 </html>

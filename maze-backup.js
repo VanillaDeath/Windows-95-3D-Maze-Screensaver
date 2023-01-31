@@ -1,7 +1,7 @@
 var canvas;
 var gl;
 var program;
-var startTime = window.performance.now();
+var startTime = new Date();
 
 //EDITABLE CONSTANTS
 const MzX = 10; //X dimension of Maze
@@ -15,18 +15,9 @@ OPENNUM = Math.min(OPENNUM,MzX*MzY-4-POLYNUM);
 
 var openplaces;
 var SX, SY;
+var SX1, SY1;
 var maze;
 var theta, dtheta;
-
-var turn;
-var removePoly;
-var mazeDebug;
-var debugHTML;
-var runStartTime;
-var frameDelay = 1000 / 60;
-var lastRenderTime;
-var moveNumber;
-var directions = ["-Y", "+X", "+Y", "-X"];
 
 var polypos,openpos;
 var FinX, FinY;
@@ -39,7 +30,7 @@ var ratX,ratY,ratdX,ratdY,rattheta,ratdtheta;
 var polytheta=0;
 var height =0;
 
-var near = 0.01;
+var near = 0.1;
 var far = 50.0;
 var fovy = 90;  // Field-of-view in Y direction angle (in degrees)
 var aspect;     // Viewport aspect ratio
@@ -256,9 +247,7 @@ window.onload = function() {
 									gl.generateMipmap(gl.TEXTURE_2D);
 									gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 
-									// nextFrame(); // logic for first frame
-									render(); // (spin up render loop)
-									// var logicLoop =  setInterval(() => nextFrame(), 5);
+									render(); 
 								};
 								ratImg.src = './rat.png'; 
 							};
@@ -279,12 +268,6 @@ window.onload = function() {
 }
 
 function resetVars() {
-	runStartTime = window.performance.now();
-	if (window.location.hash === "#debug") {
-		mazeDebug = true;
-		debugHTML = document.getElementById("debug");
-		debugHTML.style.display = "block";
-	}
 
 	lighting=0;
 
@@ -292,10 +275,6 @@ function resetVars() {
 
 	SX=0;
 	SY=0;
-
-	removePoly = null;
-	turn = Math.floor(Math.random() * 2) || -1;
-	moveNumber = 0;
 
 	openplaces = [];
 	for (var i=0;i<MzX;i++){
@@ -305,23 +284,47 @@ function resetVars() {
 	}
 	[SX,SY]=openplaces.splice(Math.floor(Math.random() * openplaces.length),1)[0];
 
+	eyeX = SX+.5;
+	eyeY = SY+.5;
 	deyeX = 0;
 	deyeY = 0;
 	dtheta = 0;
+
+	SX1 = SX;
+	SY1 = SY;
 
 	ratdX=0;
 	ratdY=0;
 	rattheta=0;
 	ratdtheta=0;
 
-	theta=.5*Math.PI;
+	//don't start facing a wall
+	if (maze[SY][SX][1]!=1){
+		if (maze[SY][SX][0]==1){
+			theta=-90/180*Math.PI;
+			SY1=SY-1;
+		} else if (maze[SY][SX][2]==1){
+			theta=90/180*Math.PI;
+			SY1=SY+1;
+		} else {
+			theta=Math.PI;
+			SX1=SX-1;
+		}
+	} else {
+		theta=0;
+		SX1=SX+1;
+	}
 
-	eyeX = SX + .5;
-	eyeY = SY;
-
+	for(var i=0;i<openplaces.length;i++){
+		if (openplaces[i][0]==SX1 && openplaces[i][1]==SY1){
+			openplaces.splice(i,1);
+			break;
+		}
+	}
+	
 	polypos=[]
-	for (var i = 0; i < POLYNUM; i++) {
-		polypos.push(openplaces.splice(Math.floor(Math.random() * openplaces.length), 1)[0].concat([Math.floor(Math.random() * 4)]));
+	for (var i=0;i<POLYNUM;i++){
+		polypos.push(openplaces.splice(Math.floor(Math.random() * openplaces.length),1)[0].concat([Math.floor(Math.random() * 4)]));
 	}
 
 	openpos=[]
@@ -329,11 +332,11 @@ function resetVars() {
 		openpos.push(openplaces.splice(Math.floor(Math.random() * openplaces.length),1)[0]);
 	}
 
-	[FinX, FinY] = openplaces.splice(Math.floor(Math.random() * openplaces.length), 1)[0];
+	[FinX,FinY] = openplaces.splice(Math.floor(Math.random() * openplaces.length),1)[0];
 	
 	[ratX,ratY] = openplaces.splice(Math.floor(Math.random() * openplaces.length),1)[0];
-	ratX += .5;
-	ratY += .5;
+	ratX+=.5;
+	ratY+=.5;
 	up = vec3(0.0, 0.0, 1.0);
 	
 	NumVertices=0;
@@ -467,8 +470,7 @@ function quad(a, b, c, d,t,f)
     }
 }
 
-var render = function(renderTime = window.performance.now()){
-	lastRenderTime = lastRenderTime || renderTime;
+var render = function(){
 
 	if (window.location.href.endsWith("/3dmaze/ssmaze.scr")) {
 		canvas.addEventListener("mousemove", function() {
@@ -513,38 +515,27 @@ var render = function(renderTime = window.performance.now()){
 	gl.drawArrays( gl.TRIANGLES, 0, 6 );
     gl.uniform1i(gl.getUniformLocation(program, "i"),2);
 	gl.drawArrays( gl.TRIANGLES, 6, 6 );	
-   	var degtheta=Math.round(theta/Math.PI*180 *10000)/10000
-   	var direction = Math.round((degtheta %360 /90)+5 )%4;		
-	var cellX = eyeX - (.5 * ((direction == 2) || (direction == 0))) - (direction == 3);
-	var cellY = eyeY - (.5 * ((direction == 1) || (direction == 3))) - (direction == 0);
-	// var reference = Math.round(frameDelay / (1000 / 60));
-	// var multiplier = 2**(reference < -2 ? -2 : (reference > 2 ? 2 : reference));
-    if (!Math.round((FinX-cellX)*1000)/1000 && !Math.round((FinY-cellY)*1000)/1000) {
+    if (!Math.round((FinX+.5-eyeX)*1000)/1000 && !Math.round((FinY+.5-eyeY)*1000)/1000) {
     	height-=.01;
 		scaleMatrix=scalem(1,1,height);		
 	    gl.uniformMatrix4fv( scaleMatrixLoc, false, flatten(scaleMatrix) );
-	    if (height<0) resetVars();
+	    if (height<0)
+	    	resetVars();
     } else if (height<3/4) {
 		height+=.01;
-		if (height > 3/4) height = 3/4;
-		scaleMatrix = scalem(1, 1, height);
-		gl.uniformMatrix4fv(scaleMatrixLoc, false, flatten(scaleMatrix));
-	} else if (Math.round(Math.abs(up[2])*10000)/10000-1) {
-		if (direction%2) {
-			up = vec3(mult(rotateX((direction - 2)*-2),vec4(up)));
+		scaleMatrix=scalem(1,1,height);		
+	    gl.uniformMatrix4fv( scaleMatrixLoc, false, flatten(scaleMatrix) );
+	} else if (Math.round(Math.abs(up[2])*10000)/10000-1){
+		if (((Math.round(theta/Math.PI*180 *10000)/10000 %360 /90)+5)%2) {
+			up=vec3(mult(rotateX(2),vec4(up)));
 		} else {
-			up = vec3(mult(rotateY((direction - 1)*2),vec4(up)));
-		}
-		if (removePoly > -1 && !(Math.round(Math.abs(up[2]) * 10000) / 10000 - 1)) {
-			polypos.splice(removePoly, 1);
-			removePoly = null;
-			up = vec3(0.0, 0.0, Math.round(up[2]));
+			up=vec3(mult(rotateY(2),vec4(up)));			
 		}
 	} else { 
 		[theta,eyeX,eyeY,dtheta,deyeX,deyeY]=nextMove(theta,eyeX,eyeY,dtheta,deyeX,deyeY);
 		// [theta,eyeX,eyeY,dtheta,deyeX,deyeY]=nextMove(theta,eyeX,eyeY,dtheta,deyeX,deyeY);
-		[rattheta, ratX, ratY, ratdtheta, ratdX, ratdY] = nextMove(rattheta, ratX, ratY, ratdtheta, ratdX, ratdY, true);
 	}
+	[rattheta,ratX,ratY,ratdtheta,ratdX,ratdY]=nextMove(rattheta,ratX,ratY,ratdtheta,ratdX,ratdY,true);
 	/* while (ratdtheta){
 		[rattheta,ratX,ratY,ratdtheta,ratdX,ratdY]=nextMove(rattheta,ratX,ratY,ratdtheta,ratdX,ratdY,true);
 	} */
@@ -552,31 +543,13 @@ var render = function(renderTime = window.performance.now()){
 	gl.drawArrays( gl.TRIANGLES, 12, PICNUM*6);
     gl.uniform1i(gl.getUniformLocation(program, "i"),0);
 	gl.drawArrays( gl.TRIANGLES, 12+PICNUM*6, NumVertices-PICNUM*6);
-
-	gl.uniform1i(gl.getUniformLocation(program, "i"), 8);
-	polytheta += 2;
-	for (i = 0; i < polypos.length; i++) {
-		scaleMatrix = mult(scalem(1, 1, height), mult(translate(polypos[i][0] + .5, polypos[i][1] + .5, .25), rotateZ(polytheta)));
-		gl.uniformMatrix4fv(scaleMatrixLoc, false, flatten(scaleMatrix));
-		gl.drawArrays(gl.TRIANGLES, [12, 24, 48, 108][polypos[i][2]] + 6 + NumVertices, [12, 24, 60, 108][polypos[i][2]]);
-		if (removePoly !== i && moveNumber > 0 && !(Math.round((polypos[i][0] - cellX) * 1000) / 1000) && !(Math.round((polypos[i][1] - cellY) * 1000) / 1000)) {
-			if (direction % 2) {
-				up = vec3(mult(rotateX((direction - 2) * -2), vec4(up)));
-			} else {
-				up = vec3(mult(rotateY((direction - 1) * 2), vec4(up)));
-			}
-			removePoly = i;
-		}
-	}    
-
-	if (moveNumber > 0 || height > 3/8) {
-		gl.uniform1i(gl.getUniformLocation(program, "i"), 5);
-		scaleMatrix = mult(scalem(1, 1, height), mult(translate(FinX + .5, FinY + .5, 0), mult(rotateZ(theta / Math.PI * 180), scalem(.75, .75, .75))));
-		gl.uniformMatrix4fv(scaleMatrixLoc, false, flatten(scaleMatrix));
-		gl.drawArrays(gl.TRIANGLES, NumVertices + 12, 6);
-	}
+    
     gl.uniform1i(gl.getUniformLocation(program, "i"),4);
-   	scaleMatrix=mult(scalem(1,1,height),mult(translate(SX+.5,SY+.5,0),rotateZ(theta/Math.PI*180)));
+   	scaleMatrix=mult(scalem(1,1,height),mult(translate(SX1+.5,SY1+.5,0),rotateZ(theta/Math.PI*180)));
+    gl.uniformMatrix4fv( scaleMatrixLoc, false, flatten(scaleMatrix) );
+	gl.drawArrays( gl.TRIANGLES, NumVertices+12,6);
+    gl.uniform1i(gl.getUniformLocation(program, "i"),5);
+   	scaleMatrix=mult(scalem(1,1,height),mult(translate(FinX+.5,FinY+.5,0),mult(rotateZ(theta/Math.PI*180),scalem(.75,.75,.75))));
     gl.uniformMatrix4fv( scaleMatrixLoc, false, flatten(scaleMatrix) );
 	gl.drawArrays( gl.TRIANGLES, NumVertices+12,6);
 	gl.uniform1i(gl.getUniformLocation(program, "i"),6);
@@ -589,49 +562,36 @@ var render = function(renderTime = window.performance.now()){
    	scaleMatrix=mult(scalem(1,1,height),mult(translate(ratX,ratY,0),mult(rotateZ(theta/Math.PI*180),scalem(.75,.75,.75))));
     gl.uniformMatrix4fv( scaleMatrixLoc, false, flatten(scaleMatrix) );
 	gl.drawArrays( gl.TRIANGLES, NumVertices+12,6);
-
-	requestAnimFrame(render);
-
-	frameDelay = renderTime - lastRenderTime;
-	lastRenderTime = renderTime;
-	if (mazeDebug) {
-		var totalRT = ((renderTime - startTime) / 1000);
-		totalRT = Math.floor(totalRT / 60) + ":" + (totalRT % 60).toFixed(3).padStart(6, "0");
-		var mazeRT = ((renderTime - runStartTime) / 1000);
-		mazeRT = Math.floor(mazeRT / 60) + ":" + (mazeRT % 60).toFixed(3).padStart(6, "0");
-		debugHTML.innerHTML = `<b>Debug:</b> <br>moveNumber: ${moveNumber}<br>eyeX,Y:<br>${eyeX}<br>${eyeY}<br>cellX,Y:<br>${cellX}<br>${cellY}<br>&Delta;eyeX,Y:<br>${deyeX}<br>${deyeY}<br><br>
-		turn first: ${turn < 0 ? "right" : "left"}<br>direction: ${direction} (${directions[direction]})<br>&theta;: ${theta}<br>&theta;&deg;: ${degtheta}<br>&theta;&deg;%360: ${degtheta%360}<br>&Delta;&theta;: ${dtheta}<br><br>
-		up: ${up}<br>height: ${height}<br><br>
-		Frame Delay: ${Math.round(frameDelay)}ms<br>Frame Rate: ${Math.round(1000 / (frameDelay))} FPS<br>Total Runtime: ${totalRT}<br>Maze Runtime: ${mazeRT}`;
+    gl.uniform1i(gl.getUniformLocation(program, "i"),8);
+    polytheta+=2;
+    for (i=0;i<polypos.length;i++){
+		scaleMatrix=mult(scalem(1,1,3/4),mult(translate(polypos[i][0]+.5,polypos[i][1]+.5,.25),rotateZ(polytheta)));
+	    gl.uniformMatrix4fv( scaleMatrixLoc, false, flatten(scaleMatrix) );
+		gl.drawArrays( gl.TRIANGLES, [12,24,48,108][polypos[i][2]]+6+NumVertices,[12,24,60,108][polypos[i][2]]);
+    	if (!Math.round((polypos[i][0]+.5-eyeX)*1000)/1000 && !Math.round((polypos[i][1]+.5-eyeY)*1000)/1000) {
+			if (((Math.round(theta/Math.PI*180 *10000)/10000 %360 /90)+5)%2) {
+				up=vec3(mult(rotateX(2),vec4(up)));
+			} else {
+				up=vec3(mult(rotateY(2),vec4(up)));			
+			}
+			polypos.splice(i,1);
+    	}
 	}
+    requestAnimFrame(render);
 }
 
 function nextMove(theta,X,Y,dtheta,dX,dY,isRat=false)
 {
-	X = Math.round(X * 10000) / 10000;
-	Y = Math.round(Y * 10000) / 10000;
 	var degtheta=Math.round(theta/Math.PI*180 *10000)/10000
-	var direction = ((degtheta % 360 / 90) + 5) % 4;
-	if (isRat) {
-		var cellX = X - .5;
-		var cellY = Y - .5;
-	} else {
-		var cellX = X - (.5 * ((direction == 2) || (direction == 0))) - (direction == 3);
-		var cellY = Y - (.5 * ((direction == 1) || (direction == 3))) - (direction == 0);
-	}
+	X=Math.round(X*10000)/10000;
+	Y=Math.round(Y*10000)/10000;
 	if (degtheta %90) {
-		// 3: x+1
-		// 0: y+1
-
-		// var arcX = X + Math.sin(dtheta) * .5;
-		// var arcY = Y + Math.sin(dtheta) * .5;
-		// return [theta+dtheta,arcX,arcY,dtheta,0,0]
 		return [theta+dtheta,X+dX,Y+dY,dtheta,dX,dY];
-	} else if (cellX%1 || cellY%1) {
+	} else if ((X+.5)%1 || (Y+.5)%1) {
 		return [theta,X+dX,Y+dY,dtheta,dX,dY];
 	} else {//new move
-		if (!isRat) moveNumber += 1;
-		var walls = maze[cellY][cellX];
+		var direction = ((degtheta %360 /90)+5 )%4;		
+		var walls = maze[Y-.5][X-.5];
 		//[-Y,+X,+Y,-X]
 		//[ 0, 1, 2, 3]
 		// turn right = theta minus = <--
@@ -643,38 +603,28 @@ function nextMove(theta,X,Y,dtheta,dX,dY,isRat=false)
 		//left=open - rotate left
 		//else i.e. dead end - rotate right
 		if (isRat && dtheta && walls[direction]==1) {
-			dX = ((direction == 1) - (direction == 3))/50;
-			dY = ((direction == 2) - (direction == 0))/50;
+			dX = ((direction==1)-(direction==3))/50;
+			dY = ((direction==2)-(direction==0))/50;
 			return [theta,X+dX,Y+dY,0,dX,dY];
-		} else if (walls[(direction+Math.abs(turn-2))%4]==1) { // abs(turn-2), -1: 3, 1: 1
-			dtheta = turn * Math.PI / (isRat ? 20.0 : 100.0);
-			let adjacent = (direction+turn+2)%4;
-			let dirX = turn * (((direction == 0) - (direction == 2)) + ((adjacent == 0) - (adjacent == 2)));
-			let dirY = turn * (((direction == 1) - (direction == 3)) + ((adjacent == 1) - (adjacent == 3)));
-			dX = isRat ? 0 : dirX/100;
-			dY = isRat ? 0 : dirY/100;
+		} else if (walls[(direction+3)%4]==1) {
+			dtheta = -1 * Math.PI / (isRat ? 20.0 : 200.0);
+			dX = isRat ? 0 : ((direction==2)-(direction==0))/100;
+			dY = isRat ? 0 : ((direction==3)-(direction==1))/100;
 			return [theta+dtheta,X+dX,Y+dY,dtheta,dX,dY];
 		} else if (walls[direction]==1){
 			dX = ((direction==1)-(direction==3))/(isRat ? 50 : 100);
 			dY = ((direction==2)-(direction==0))/(isRat ? 50 : 100);
 			return [theta,X+dX,Y+dY,0,dX,dY];
-		} else if (walls[(direction+turn+2)%4]==1){ // turn+2, -1: 1, 1: 3
-			dtheta = -1 * turn * Math.PI / (isRat ? 20.0 : 100.0);
-			let adjacent = (direction+Math.abs(turn-2))%4;
-			let dirX = turn * ((direction == 2) - (direction == 0) + ((adjacent == 2) - (adjacent == 0)));
-			let dirY = turn * ((direction == 3) - (direction == 1) + ((adjacent == 3) - (adjacent == 1)));
-			dX = isRat ? 0 : dirX/100;
-			dY = isRat ? 0 : dirY/100;
+		} else if (walls[(direction+1)%4]==1){
+			dtheta = 1 * Math.PI / (isRat ? 20.0 : 200.0);
+			dX = isRat ? 0 : ((direction==0)-(direction==2))/100;
+			dY = isRat ? 0 : ((direction==1)-(direction==3))/100;
 			return [theta+dtheta,X+dX,Y+dY,dtheta,dX,dY];
 		} else {
-			dtheta=turn * Math.PI/(isRat ? 20.0 : 45.0);
+			dtheta=-1 * Math.PI/(isRat ? 20.0 : 160.0);
 			return [theta+dtheta,X,Y,dtheta,0,0];
 		}		
 	}
-}
-
-function nextFrame(){
-	
 }
 
 
